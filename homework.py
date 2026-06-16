@@ -307,3 +307,90 @@ for route_id, group in route_filter.groupby('线路号'):
     print(file_path)
 
 print(f"\n共成功生成{len(route_filter['线路号'].unique())}个线路信息文件")
+
+
+# ==================== 任务6 服务绩效排名与热力图 ====================
+print("\n" + "=" * 60)
+print("【任务6 服务绩效排名与热力图】")
+
+# 6.1 四个维度的Top10排名
+# 按驾驶员编号分组统计服务人次，降序排序后取前10名
+driver_top10 = df_board.groupby('驾驶员编号').size().sort_values(ascending=False).head(10)
+# 按线路号分组统计服务人次，取Top10
+route_top10 = df_board.groupby('线路号').size().sort_values(ascending=False).head(10)
+# 按上车站点分组统计服务人次，取Top10
+station_top10 = df_board.groupby('上车站点').size().sort_values(ascending=False).head(10)
+# 按车辆编号分组统计服务人次，取Top10
+vehicle_top10 = df_board.groupby('车辆编号').size().sort_values(ascending=False).head(10)
+
+print("\n--- Top 10 司机 ---")
+for idx, (drv, cnt) in enumerate(driver_top10.items(), 1):
+    print(f"Top{idx}: 驾驶员{int(drv)}，服务人次: {cnt}")
+
+print("\n--- Top 10 线路 ---")
+for idx, (route, cnt) in enumerate(route_top10.items(), 1):
+    print(f"Top{idx}: 线路{route}，服务人次: {cnt}")
+
+print("\n--- Top 10 上车站点 ---")
+for idx, (station, cnt) in enumerate(station_top10.items(), 1):
+    print(f"Top{idx}: 站点{station}，服务人次: {cnt}")
+
+print("\n--- Top 10 车辆 ---")
+for idx, (veh, cnt) in enumerate(vehicle_top10.items(), 1):
+    print(f"Top{idx}: 车辆{veh}，服务人次: {cnt}")
+
+# 6.2 构造热力图数据（4行 × 10列）
+# 将四个维度的Top10数值组合成4行10列的numpy二维数组，作为热力图的色值数据
+heatmap_array = np.array([
+    driver_top10.values,
+    route_top10.values,
+    station_top10.values,
+    vehicle_top10.values
+])
+
+# 定义热力图的行标签（四个维度）和列标签（Top1到Top10）
+row_names = ["Driver", "Route", "Boarding Station", "Vehicle"]
+col_names = [f"Top{i}" for i in range(1, 11)]
+
+# 6.3 绘制seaborn热力图
+plt.figure(figsize=(12, 6))
+sns.heatmap(
+    heatmap_array,
+    annot=True,        # 在每个单元格内显示具体数值
+    fmt='d',           # 数值以整数格式显示
+    cmap='YlOrRd',     # 颜色映射方案，黄-橙-红渐变，数值越高颜色越深
+    xticklabels=col_names,
+    yticklabels=row_names,
+    cbar_kws={'label': 'Passenger Volume'}  # 颜色条的标签
+)
+
+# 设置英文主标题与副标题
+plt.title('Service Performance Heatmap: Top 10 Entities by Dimension', fontsize=14, pad=15)
+plt.suptitle('Valid boarding record counts (card type = 0)', fontsize=10, y=0.93)
+
+# 设置x轴标签旋转角度为0，保持水平显示
+plt.xticks(rotation=0)
+plt.yticks(rotation=0)
+
+plt.tight_layout()
+# 保存图片，bbox_inches='tight'自动裁剪多余空白
+plt.savefig('performance_heatmap.png', dpi=150, bbox_inches='tight')
+plt.close()
+print("\n已保存服务绩效热力图: performance_heatmap.png")
+
+# 6.4 结论说明
+conclusion = """
+【结论说明】
+从热力图和排名结果可以观察到明显的客流头部效应：四个维度中排名第一的主体服务人次均显著高于后续排名，
+其中车辆和站点维度的客流集中度最高，少数核心车辆与站点承担了绝大部分客运压力。线路和司机维度的分布
+相对平缓，但Top1仍与后续名次拉开较大差距。该分布特征符合公共交通的客流规律，提示运营方可针对高峰时段
+的热门线路、站点和车辆进行运力倾斜与调度优化，同时保障高负荷车辆的维护与司机的轮休安排，提升整体运营效率与服务质量。
+"""
+print(conclusion)
+
+print("\n" + "=" * 60)
+print("所有任务执行完成！生成文件：")
+print("- hour_distribution.png")
+print("- route_stops.png")
+print("- performance_heatmap.png")
+print("- 线路驾驶员信息/ 文件夹（含20个txt文件）")
