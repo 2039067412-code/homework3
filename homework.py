@@ -201,3 +201,73 @@ plt.tight_layout()
 plt.savefig('route_stops.png', dpi=150)
 plt.close()
 print("\n已保存线路站点条形图: route_stops.png")
+
+
+# ==================== 任务4 高峰小时系数计算 ====================
+print("\n" + "=" * 60)
+print("【任务4 高峰小时系数计算】")
+
+# 4.1 自动识别高峰小时（刷卡量最大的小时）
+# 按小时分组统计全天各小时的刷卡总量
+hour_total = df_board.groupby('hour').size()
+# idxmax()返回刷卡量最大值对应的小时数，即自动识别出的高峰小时
+peak_hour = hour_total.idxmax()
+# 获取高峰小时对应的实际刷卡总量
+peak_volume = hour_total.max()
+
+# 将高峰小时数值格式化为两位数字的时间字符串，例如09:00~10:00
+peak_start_str = f"{peak_hour:02d}:00"
+peak_end_str = f"{peak_hour + 1:02d}:00"
+print(f"高峰小时: {peak_start_str}~{peak_end_str}, 刷卡量: {peak_volume}次")
+
+# ========== 核心注释：分钟粒度聚合前置准备 ==========
+# 筛选出高峰小时内的所有上车刷卡记录
+# 将交易时间列设置为数据集的行索引——这是pandas resample时间重采样的必要前提
+# 只有将时间类型设为索引，才能按照固定时间窗口对数据进行聚合统计
+peak_data = df_board[df_board['hour'] == peak_hour].set_index('交易时间')
+
+# 4.2 5分钟粒度聚合，计算PHF5
+# ========== 核心注释：5分钟粒度聚合 ==========
+# 使用resample()时间重采样函数，将高峰小时内的所有刷卡记录按5分钟为一个窗口进行划分
+# 参数'5min'表示重采样的时间频率为5分钟；size()统计每个时间窗口内的刷卡记录总数
+# 最终得到一个以时间为索引、值为对应5分钟窗口刷卡量的Series
+count_5min = peak_data.resample('5min').size()
+# 从所有5分钟窗口中，提取出最大的刷卡量数值，代表高峰小时内客流最集中的5分钟流量
+max_5min_val = count_5min.max()
+# idxmax()返回最大值对应的索引，也就是该最大5分钟窗口的起始时间戳
+max_5min_time = count_5min.idxmax()
+# 将时间戳格式化为 时:分 的字符串形式，用于结果输出展示
+max_5min_start = max_5min_time.strftime('%H:%M')
+# 起始时间加上5分钟的时间长度，得到该窗口的结束时间，组成完整的时间区间
+max_5min_end = (max_5min_time + pd.Timedelta(minutes=5)).strftime('%H:%M')
+
+# ========== 核心注释：PHF5计算公式实现 ==========
+# 按照交通工程高峰小时系数定义计算PHF5
+# 公式：PHF5 = 高峰小时实际刷卡量 ÷（1小时内5分钟窗口总数 × 最大5分钟刷卡量）
+# 分母含义：假设高峰小时内客流完全均匀分布，且每个窗口都达到最大5分钟流量时的理论小时总量
+# PHF取值范围为0~1：值越接近1说明高峰小时内客流分布越均匀；值越小说明客流越集中在少数短时段
+PHF5 = peak_volume / (12 * max_5min_val)
+
+print(f"最大5分钟刷卡量({max_5min_start}~{max_5min_end}): {max_5min_val}次")
+print(f"PHF5  = {peak_volume} / (12 × {max_5min_val}) = {PHF5:.4f}")
+
+# 4.3 15分钟粒度聚合，计算PHF15
+# ========== 核心注释：15分钟粒度聚合 ==========
+# 按15分钟为一个时间窗口对高峰小时数据进行重采样，统计每个窗口的刷卡记录数
+# 1小时包含4个15分钟窗口，粒度比5分钟更粗，客流波动会更平缓
+count_15min = peak_data.resample('15min').size()
+# 获取15分钟粒度下的最大刷卡量和对应窗口的起始时间
+max_15min_val = count_15min.max()
+max_15min_time = count_15min.idxmax()
+# 格式化输出15分钟时间窗口的起止时间
+max_15min_start = max_15min_time.strftime('%H:%M')
+max_15min_end = (max_15min_time + pd.Timedelta(minutes=15)).strftime('%H:%M')
+
+# ========== 核心注释：PHF15计算公式实现 ==========
+# 计算15分钟粒度的高峰小时系数PHF15
+# 分母中4的含义：1小时包含4个连续的15分钟时间窗口
+# 通常PHF15会比PHF5更接近1，因为时间粒度越大，短时波动被平滑，客流分布越趋于均匀
+PHF15 = peak_volume / (4 * max_15min_val)
+
+print(f"最大15分钟刷卡量({max_15min_start}~{max_15min_end}): {max_15min_val}次")
+print(f"PHF15 = {peak_volume} / (4 × {max_15min_val}) = {PHF15:.4f}")
