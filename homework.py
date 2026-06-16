@@ -51,3 +51,76 @@ print(f"删除缺失值后剩余有效记录数: {df.shape[0]}")
 df_board = df[df['刷卡类型'] == 0].copy()
 print(f"\n有效上车刷卡记录总数: {df_board.shape[0]}")
 
+
+# ==================== 任务2 时间分布分析 ====================
+print("\n" + "=" * 60)
+print("【任务2 时间分布分析】")
+
+# 2.1 numpy布尔索引统计早晚时段刷卡量
+# 将pandas的小时列转换为numpy数组，满足题目要求使用numpy完成条件统计的规范
+hour_array = df_board['hour'].values
+total_swipes = len(hour_array)
+
+# 早峰前：小时小于7
+# 通过numpy布尔索引筛选出hour<7的元素，np.sum对布尔数组求和即得到符合条件的记录总数
+before_peak_num = np.sum(hour_array < 7)
+# 深夜时段：小时大于等于22
+late_night_num = np.sum(hour_array >= 22)
+
+# 计算两个时段刷卡量占全天总刷卡量的百分比
+before_peak_ratio = before_peak_num / total_swipes * 100
+late_night_ratio = late_night_num / total_swipes * 100
+
+print("\n(a) 早晚时段刷卡量统计：")
+print(f"早峰前(<7:00)刷卡量: {before_peak_num} 次，占全天比例: {before_peak_ratio:.2f}%")
+print(f"深夜时段(≥22:00)刷卡量: {late_night_num} 次，占全天比例: {late_night_ratio:.2f}%")
+
+# 2.2  matplotlib绘制24小时刷卡量柱状图
+# 按小时分组统计刷卡量，reindex补全0-23所有小时，避免无数据的小时出现空缺
+hour_counts = df_board.groupby('hour').size().reindex(range(24), fill_value=0)
+
+plt.figure(figsize=(12, 6))
+
+# 定义三类时段对应的柱子颜色，用于可视化区分
+color_normal = '#4C72B0'
+color_before = '#DD8452'
+color_late = '#55A868'
+
+# 遍历0-23小时，为每个小时生成对应的颜色值，存入列表供柱状图使用
+bar_colors = []
+for h in range(24):
+    if h < 7:
+        bar_colors.append(color_before)
+    elif h >= 22:
+        bar_colors.append(color_late)
+    else:
+        bar_colors.append(color_normal)
+
+# 调用matplotlib原生接口绘制柱状图，x轴为小时，y轴为对应刷卡量
+plt.bar(x=range(24), height=hour_counts.values, color=bar_colors, width=0.75)
+
+# 设置x轴刻度，步长为2，调整字体大小
+plt.xticks(range(0, 24, 2), fontsize=10)
+plt.xlabel('Hour of Day', fontsize=12)
+plt.ylabel('Swiping Volume (times)', fontsize=12)
+
+# 设置图表英文标题，pad调整标题与图表的间距
+plt.title('24-Hour Bus Card Swiping Volume Distribution', fontsize=14, pad=15)
+
+# 自定义图例元素，对应三类时段的颜色与说明
+legend_items = [
+    Patch(facecolor=color_normal, label='Normal hours (7:00-21:59)'),
+    Patch(facecolor=color_before, label='Before morning peak (<7:00)'),
+    Patch(facecolor=color_late, label='Late night (≥22:00)')
+]
+plt.legend(handles=legend_items, loc='upper right', fontsize=9)
+
+# 添加水平方向网格线，设置虚线样式与透明度，提升可读性
+plt.grid(axis='y', linestyle='--', alpha=0.6)
+
+# 自动调整布局，避免标签被截断
+plt.tight_layout()
+# 保存图片到当前目录，设置分辨率为150dpi
+plt.savefig('hour_distribution.png', dpi=150)
+plt.close()
+print("\n(b) 已保存24小时分布柱状图: hour_distribution.png")
