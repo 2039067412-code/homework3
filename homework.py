@@ -365,8 +365,12 @@ sns.heatmap(
 )
 
 # 设置英文主标题与副标题
-plt.title('Service Performance Heatmap: Top 10 Entities by Dimension', fontsize=14, pad=15)
-plt.suptitle('Valid boarding record counts (card type = 0)', fontsize=10, y=0.93)
+plt.title('Service Performance Heatmap: Top 10 Entities by Dimension', 
+          fontsize=14, pad=25)
+
+# 副标题：用相对坐标精准放在主标题上方，居中显示
+plt.text(0.5, 1.03, 'Valid boarding record counts (card type = 0)', 
+         fontsize=10, ha='center', transform=plt.gca().transAxes)
 
 # 设置x轴标签旋转角度为0，保持水平显示
 plt.xticks(rotation=0)
