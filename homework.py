@@ -124,3 +124,80 @@ plt.tight_layout()
 plt.savefig('hour_distribution.png', dpi=150)
 plt.close()
 print("\n(b) 已保存24小时分布柱状图: hour_distribution.png")
+
+
+# ==================== 任务3 线路站点分析 ====================
+print("\n" + "=" * 60)
+print("【任务3 线路站点分析】")
+
+# 严格按照题目要求定义函数，函数名、参数名、docstring均不做修改
+def analyze_route_stops(df, route_col='线路号', stops_col='ride_stops'):
+    """
+    计算各线路乘客的平均搭乘站点数及其标准差。
+    Parameters
+    ----------
+    df : pd.DataFrame  预处理后的数据集
+    route_col : str    线路号列名
+    stops_col : str    搭乘站点数列名
+    Returns
+    -------
+    pd.DataFrame  包含列：线路号、mean_stops、std_stops，按 mean_stops 降序排列
+    """
+    # 按线路号分组，对搭乘站点数列同时计算均值和标准差两个统计指标
+    route_stats = df.groupby(route_col)[stops_col].agg(['mean', 'std']).reset_index()
+    # 重命名结果列名，符合题目要求的输出格式
+    route_stats.columns = ['线路号', 'mean_stops', 'std_stops']
+    # 按平均搭乘站点数从高到低排序，重置索引
+    route_stats = route_stats.sort_values('mean_stops', ascending=False).reset_index(drop=True)
+    return route_stats
+
+# 调用自定义函数，得到所有线路的站点统计结果
+route_result = analyze_route_stops(df_board)
+print("\n各线路平均搭乘站点数(前10行)：")
+print(route_result.head(10))
+
+# seaborn绘制水平条形图（前15条线路）
+# 截取平均站点数最高的前15条线路，用于可视化
+top15 = route_result.head(15)
+# 将数值型的线路号转换为字符串类型，作为y轴的分类标签
+top15['route_label'] = top15['线路号'].astype(str)
+
+plt.figure(figsize=(10, 8))
+
+# 绘制seaborn水平条形图
+sns.barplot(
+    x='mean_stops',
+    y='route_label',
+    data=top15,
+    palette='Blues_d',
+    orient='h',
+    order=top15['route_label']  # 按均值从高到低排列
+)
+
+# 借助matplotlib添加误差棒（显示标准差），适配不同seaborn版本
+# 新增hue参数适配seaborn新版语法，消除palette参数的弃用警告
+sns.barplot(
+    x='mean_stops',
+    y='route_label',
+    hue='route_label',
+    data=top15,
+    palette='Blues_d',
+    orient='h',
+    order=top15['route_label'],
+    legend=False
+)
+
+# 设置英文标题与坐标轴标签
+plt.title('Top 15 Routes: Average Ride Stops (with Standard Deviation)', fontsize=14, pad=15)
+plt.xlabel('Average Number of Ride Stops', fontsize=12)
+plt.ylabel('Route Number', fontsize=12)
+
+# 设置x轴从0开始，符合统计图表规范
+plt.xlim(left=0)
+# 添加x轴方向网格线
+plt.grid(axis='x', linestyle='--', alpha=0.6)
+
+plt.tight_layout()
+plt.savefig('route_stops.png', dpi=150)
+plt.close()
+print("\n已保存线路站点条形图: route_stops.png")
