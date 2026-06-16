@@ -271,3 +271,39 @@ PHF15 = peak_volume / (4 * max_15min_val)
 
 print(f"最大15分钟刷卡量({max_15min_start}~{max_15min_end}): {max_15min_val}次")
 print(f"PHF15 = {peak_volume} / (4 × {max_15min_val}) = {PHF15:.4f}")
+
+
+# ==================== 任务5 线路驾驶员信息批量导出 ====================
+print("\n" + "=" * 60)
+print("【任务5 线路驾驶员信息批量导出】")
+
+# 筛选线路号在1101到1120区间内的所有记录，共20条线路
+route_filter = df_board[(df_board['线路号'] >= 1101) & (df_board['线路号'] <= 1120)]
+
+# 创建输出文件夹，exist_ok=True表示文件夹已存在时不报错
+output_folder = "线路驾驶员信息"
+os.makedirs(output_folder, exist_ok=True)
+
+print("已生成文件路径：")
+# 按线路号分组，遍历每一条线路，逐个生成对应的txt文件
+for route_id, group in route_filter.groupby('线路号'):
+    # 提取车辆编号和驾驶员编号两列，去重后得到该线路所有「车辆-驾驶员」的对应关系
+    pair_df = group[['车辆编号', '驾驶员编号']].drop_duplicates()
+    # 驾驶员编号原为浮点型，先转为整数再转为字符串，去除小数位
+    pair_df['驾驶员编号'] = pair_df['驾驶员编号'].astype(int).astype(str)
+    pair_df['车辆编号'] = pair_df['车辆编号'].astype(str)
+    
+    # 拼接生成txt文件的完整路径
+    file_path = os.path.join(output_folder, f"{route_id}.txt")
+    
+    # 以写入模式打开文件，utf-8编码避免中文乱码
+    with open(file_path, 'w', encoding='utf-8') as f:
+        # 第一行写入线路号信息
+        f.write(f"线路号: {route_id}\n\n")
+        # 逐行写入车辆编号与驾驶员编号，空格分隔
+        for _, row in pair_df.iterrows():
+            f.write(f"{row['车辆编号']} {row['驾驶员编号']}\n")
+    
+    print(file_path)
+
+print(f"\n共成功生成{len(route_filter['线路号'].unique())}个线路信息文件")
